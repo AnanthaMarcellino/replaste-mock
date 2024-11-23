@@ -3,6 +3,16 @@ const crypto = require('crypto');
 const { hashPassword, comparePassword } = require('../utils/password');
 const { generateToken } = require('../config/jwt');
 const { sendEmail } = require('../config/email');
+const multer = require('multer');
+const { bucket } = require('../config/storage');
+const ImageModel = require('../models/imageModel');
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+});
 
 class AuthController {
   static async register(req, res) {
@@ -206,4 +216,65 @@ class AuthController {
   }
 }
 
+class ImageController {
+  static uploadMiddleware = upload.single('image');
+
+  static async uploadImage(req, res) {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: 'No image file provided' });
+      }
+
+      const { userId } = req.body; // User ID dari form data
+      const file = req.file;
+      const fileName = `${userId}-${Date.now()}-${file.originalname}`;
+
+      // Upload ke Cloud Storage
+      const blob = bucket.file(fileName);
+      const blobStream = blob.createWriteStream({
+        metadata: {
+          contentType: file.mimetype,
+        },
+      });
+
+      blobStream.on('error', (error) => {
+        console.error('Upload error:', error);
+        res.status(500).json({ message: 'Error uploading image' });
+      });
+
+      blobStream.on('finish', async () => {
+        // Buat public URL
+        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+        
+        // Simpan ke database
+        await ImageModel.save(userId, publicUrl, fileName);
+
+        res.status(200).json({
+          message: 'Upload successful',
+          imageUrl: publicUrl
+        });
+      });
+
+      blobStream.end(file.buffer);
+
+    } catch (error) {
+      console.error('Error in upload:', error);
+      res.status(500).json({ message: 'Error processing upload' });
+    }
+  }
+
+  static async getUserImages(req, res) {
+    try {
+      const { userId } = req.params;
+      const images = await ImageModel.getByUserId(userId);
+      
+      res.json(images);
+    } catch (error) {
+      console.error('Error getting images:', error);
+      res.status(500).json({ message: 'Error retrieving images' });
+    }
+  }
+}
+
 module.exports = AuthController;
+module.exports = ImageController;
