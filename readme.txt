@@ -1,70 +1,57 @@
-.env
-DB_HOST=localhost
-DB_USER=root
-DB_PASSWORD=your_password
-DB_NAME=your_db
-JWT_SECRET=development_secret (bisa diganti kalo mau)
-PORT=3000 (bisa diubah)
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_USER=ananthamarcellino@gmail.com (Bisa diubah pake email sendiri)
-EMAIL_PASS=tprn quix lhls jtts (Bisa di ubah pake app password pribadi, plis jangan di share app password gw)
+Langkah-langkah deploy ke GCP
 
-Langkah-Langkah
-1. npm install
-2. bikin database nama bebas
-SQL: CREATE TABLE `users` (
-  `id` int NOT NULL,
-  `email` varchar(255) NOT NULL,
-  `password` varchar(255) NOT NULL,
-  `full_name` varchar(255) NOT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `reset_token` varchar(255) DEFAULT NULL,
-  `reset_token_expiry` datetime DEFAULT NULL
-)
+Bikin database nya
+Setelah selesai bikin database, jalankan
+	gcloud sql instances patch db-replaste --authorized-networks=0.0.0.0/0 --quiet
 
-## Eksekusi setelah bikin table users
-ALTER TABLE `users`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `email` (`email`);
+Masuk kedalam Mysql dengan perintah
+	mysql -u root -p -h your_db_ip_public
 
-ALTER TABLE `users`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT;
-COMMIT;
+Bikin database didalam mysql
+	CREATE DATABASE replaste;
+	USE replaste;
 
-3. npm run start
-4. test pake method POST dan GET
-	## Disarankan pake gmail pribadi untuk test reset password
-	POST localhost:{port}/auth/register
-		body: raw
-			{
-    			"email": "{email}",
-    			"password": "{password}",
-			"full_name": "{nama}"
-			}
+	CREATE TABLE users (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    full_name VARCHAR(255) NOT NULL,
+    reset_token VARCHAR(255),
+    reset_token_expiry DATETIME,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+	);
 
-	POST localhost:{port}/auth/login
-		body: raw
-			{
-    			"email": "{email}",
-    			"password": "{password}"
-			}
+Masuk kedalam folder replaste, lalu jalankan
+	gcloud builds submit --tag gcr.io/my-firstproject-441503/replaste-mock #replaste-mock diganti namanya sesuai dengan nama folder nya
 
-	GET localhost:{port}/auth/profile
-		header:
-		key: Authorization
-		value: Bearer {token}
+Lalu deploy ke cloud run
+	gcloud run deploy replaste-mock --image gcr.io/my-firstproject-441503/replaste-mock --platform managed --region asia-southeast2 --allow-unauthenticated --set-env-vars DB_HOST=your_db_ip_public,DB_USER=root,DB_PASS=your_db_pass,DB_NAME=your_db_name,JWT_SECRET=b7d7e1f0a2c4e6g8i0k2m4o6q8s0u2w4y6a8c0e2g4i6k8m0,EMAIL_HOST=smtp.gmail.com,EMAIL_PORT=587,EMAIL_USER=your_email,EMAIL_PASS=your_app_password --timeout=300
 
-	POST localhost:{port}/password/request-reset
-		body: raw
-			{
-    			"email": "{email}"
-			}
-
-	## Cek token baru di gmail
-	POST localhost:{port}/password/reset/{token}
-		body: raw
-			{
-    			"password": "{password baru}"
-			}
+test pakai postman
+	https://replaste-mock-781968692382.asia-southeast2.run.app/auth/login
+		Body: raw
+		{
+    	"email": "masbro.am88@gmail.com",
+    	"password": "ubahpassword"
+		}
+	
+	https://replaste-mock-781968692382.asia-southeast2.run.app/auth/register
+		Body: raw
+		{
+    	"email": "masbro.am88@gmail.com",
+    	"password": "ubahpassword",
+    	"full_name": "123"
+		}
+	
+	https://replaste-mock-781968692382.asia-southeast2.run.app/auth/request-reset
+		Body: raw
+		{
+    	"email": "masbro.am88@gmail.com"
+		}
+	
+	https://replaste-mock-781968692382.asia-southeast2.run.app/auth/reset/{token}
+		Body: raw
+		{
+    	"password": "123"
+		}
