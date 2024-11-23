@@ -13,9 +13,6 @@ app.use(express.json());
 // Routes
 app.use('/auth', authRoutes);
 
-// images
-app.use('/images', authRoutes);
-
 // Health check endpoint
 app.get('/', (req, res) => {
   res.send('Server is running');

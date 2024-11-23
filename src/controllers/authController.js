@@ -157,12 +157,6 @@ class AuthController {
         return res.status(500).json({ message: 'Gagal mengirim email reset password' });
       }
 
-      res.json({ 
-        message: 'Email reset password telah dikirim',
-        // Untuk keperluan testing, kita juga tampilkan token di response
-        resetToken: resetToken 
-      });
-
     } catch (error) {
       console.error(error);
       res.status(500).json({ message: 'Terjadi kesalahan server' });
@@ -276,5 +270,4 @@ class ImageController {
   }
 }
 
-module.exports = AuthController;
-module.exports = ImageController;
+module.exports = {AuthController, ImageController};
