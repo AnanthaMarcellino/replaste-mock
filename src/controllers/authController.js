@@ -7,13 +7,6 @@ const multer = require('multer');
 const { bucket } = require('../config/storage');
 const ImageModel = require('../models/imageModel');
 
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
-  },
-});
-
 class AuthController {
   static async register(req, res) {
     try {
@@ -211,7 +204,12 @@ class AuthController {
 }
 
 class ImageController {
-  static uploadMiddleware = upload.single('image');
+  static uploadMiddleware = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+      fileSize: 5 * 1024 * 1024, // 5MB limit
+    },
+  }).single('image');
 
   static async uploadImage(req, res) {
     try {
@@ -220,8 +218,18 @@ class ImageController {
       }
 
       const { userId } = req.body; // User ID dari form data
+      
+      if (!userId) {
+        return res.status(400).json({ message: 'User ID is required' });
+      }
+
       const file = req.file;
-      const fileName = `${userId}-${Date.now()}-${file.originalname}`;
+      
+      // Get file extension from original filename
+      const fileExtension = file.originalname.split('.').pop();
+      
+      // Create new filename format: user_id_originalname
+      const fileName = `user_${userId}_${Date.now()}.${fileExtension}`;
 
       // Upload ke Cloud Storage
       const blob = bucket.file(fileName);
@@ -245,7 +253,8 @@ class ImageController {
 
         res.status(200).json({
           message: 'Upload successful',
-          imageUrl: publicUrl
+          imageUrl: publicUrl,
+          fileName: fileName
         });
       });
 
@@ -261,7 +270,6 @@ class ImageController {
     try {
       const { userId } = req.params;
       const images = await ImageModel.getByUserId(userId);
-      
       res.json(images);
     } catch (error) {
       console.error('Error getting images:', error);
