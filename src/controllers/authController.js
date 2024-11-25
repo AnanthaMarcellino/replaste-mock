@@ -5,7 +5,7 @@ const { generateToken } = require('../config/jwt');
 const { sendEmail } = require('../config/email');
 const multer = require('multer');
 const { bucket } = require('../config/storage');
-const ImageModel = require('../models/imageModel');
+const PredictionModel = require('../models/predictionModel');
 
 class AuthController {
   static async register(req, res) {
@@ -204,32 +204,18 @@ class AuthController {
 }
 
 class ImageController {
-  static uploadMiddleware = multer({
-    storage: multer.memoryStorage(),
-    limits: {
-      fileSize: 5 * 1024 * 1024, // 5MB limit
-    },
-  }).single('image');
+  static uploadMiddleware = upload.single('image');
 
-  static async uploadImage(req, res) {
+  // Ganti uploadImage dengan savePrediction
+  static async savePrediction(req, res) {
     try {
       if (!req.file) {
         return res.status(400).json({ message: 'No image file provided' });
       }
 
-      const { userId } = req.body; // User ID dari form data
-      
-      if (!userId) {
-        return res.status(400).json({ message: 'User ID is required' });
-      }
-
+      const { userId, jenisPlastik, confidenceScore } = req.body;
       const file = req.file;
-      
-      // Get file extension from original filename
-      const fileExtension = file.originalname.split('.').pop();
-      
-      // Create new filename format: user_id_originalname
-      const fileName = `user_${userId}_${Date.now()}.${fileExtension}`;
+      const fileName = `${userId}-${Date.now()}-${file.originalname}`;
 
       // Upload ke Cloud Storage
       const blob = bucket.file(fileName);
@@ -245,35 +231,41 @@ class ImageController {
       });
 
       blobStream.on('finish', async () => {
-        // Buat public URL
         const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
         
-        // Simpan ke database
-        await ImageModel.save(userId, publicUrl, fileName);
+        // Simpan hasil prediksi
+        await PredictionModel.save(
+          userId, 
+          publicUrl, 
+          fileName, 
+          jenisPlastik, 
+          confidenceScore
+        );
 
         res.status(200).json({
-          message: 'Upload successful',
+          message: 'Prediction saved successfully',
           imageUrl: publicUrl,
-          fileName: fileName
+          jenisPlastik,
+          confidenceScore
         });
       });
 
       blobStream.end(file.buffer);
 
     } catch (error) {
-      console.error('Error in upload:', error);
-      res.status(500).json({ message: 'Error processing upload' });
+      console.error('Error in prediction:', error);
+      res.status(500).json({ message: 'Error processing prediction' });
     }
   }
 
-  static async getUserImages(req, res) {
+  static async getUserPredictions(req, res) {
     try {
       const { userId } = req.params;
-      const images = await ImageModel.getByUserId(userId);
-      res.json(images);
+      const predictions = await PredictionModel.getByUserId(userId);
+      res.json(predictions);
     } catch (error) {
-      console.error('Error getting images:', error);
-      res.status(500).json({ message: 'Error retrieving images' });
+      console.error('Error getting predictions:', error);
+      res.status(500).json({ message: 'Error retrieving predictions' });
     }
   }
 }

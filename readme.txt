@@ -36,18 +36,24 @@ Masuk kedalam folder replaste, lalu jalankan
 
 Lalu deploy ke cloud run
 	gcloud run deploy replaste-mock \
-  --source . \
-  --platform managed \
-  --region asia-southeast2 \
-  --allow-unauthenticated \
-	DB_HOST=[YOUR_DB_HOST],\
-	DB_USER=root,\
-	DB_PASS=[YOUR_DB_PASS],\
-	DB_NAME=replaste,\
-	JWT_SECRET=[YOUR_JWT_SECRET],\
-	GOOGLE_CLOUD_PROJECT=my-firstproject-441503,\
-	GOOGLE_CLOUD_BUCKET=replaste_bucket,\
-	GOOGLE_CLOUD_KEYFILE=./key.json"
+--image gcr.io/my-firstproject-441503/replaste-mock \
+--platform managed \
+--region asia-southeast2 \
+--allow-unauthenticated \
+--set-env-vars="\
+DB_HOST=34.101.149.62,\
+DB_USER=root,\
+DB_PASS=123,\
+DB_NAME=replaste,\
+JWT_SECRET=b7d7e1f0a2c4e6g8i0k2m4o6q8s0u2w4y6a8c0e2g4i6k8m0,\
+EMAIL_HOST=smtp.gmail.com,\
+EMAIL_PORT=587,\
+EMAIL_USER=ananthamarcellino@gmail.com,\
+EMAIL_PASS=tprn quix lhls jtts,\
+GOOGLE_CLOUD_PROJECT=my-firstproject-441503,\
+GOOGLE_CLOUD_BUCKET=replaste_bucket,\
+GOOGLE_CLOUD_KEYFILE=./key.json" \
+--timeout=300
 
 test pakai postman
 	Method POST
@@ -81,8 +87,11 @@ test pakai postman
     	"password": "123"
 		}
 
-	 Method POST
+	Method POST
 	https://replaste-mock-781968692382.asia-southeast2.run.app/auth/upload
 		Body: form-data:
 		image: pilih file
 		userId: 1
+	
+	Method GET
+	https://replaste-mock-781968692382.asia-southeast2.run.app/auth/my-images/1
