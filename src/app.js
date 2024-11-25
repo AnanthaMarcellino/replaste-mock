@@ -18,7 +18,6 @@ app.get('/', (req, res) => {
   res.send('Server is running');
 });
 
-
 // Error handling
 app.use((err, req, res, next) => {
   console.error(err.stack);

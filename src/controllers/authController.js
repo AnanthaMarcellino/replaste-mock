@@ -5,7 +5,7 @@ const { generateToken } = require('../config/jwt');
 const { sendEmail } = require('../config/email');
 const multer = require('multer');
 const { bucket } = require('../config/storage');
-const PredictionModel = require('../models/predictionModel');
+const ImageModel = require('../models/imageModel');
 
 class AuthController {
   static async register(req, res) {
@@ -206,14 +206,13 @@ class AuthController {
 class ImageController {
   static uploadMiddleware = upload.single('image');
 
-  // Ganti uploadImage dengan savePrediction
-  static async savePrediction(req, res) {
+  static async uploadImage(req, res) {
     try {
       if (!req.file) {
         return res.status(400).json({ message: 'No image file provided' });
       }
 
-      const { userId, jenisPlastik, confidenceScore } = req.body;
+      const { userId } = req.body; // User ID dari form data
       const file = req.file;
       const fileName = `${userId}-${Date.now()}-${file.originalname}`;
 
@@ -231,41 +230,35 @@ class ImageController {
       });
 
       blobStream.on('finish', async () => {
+        // Buat public URL
         const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
         
-        // Simpan hasil prediksi
-        await PredictionModel.save(
-          userId, 
-          publicUrl, 
-          fileName, 
-          jenisPlastik, 
-          confidenceScore
-        );
+        // Simpan ke database
+        await ImageModel.save(userId, publicUrl, fileName);
 
         res.status(200).json({
-          message: 'Prediction saved successfully',
-          imageUrl: publicUrl,
-          jenisPlastik,
-          confidenceScore
+          message: 'Upload successful',
+          imageUrl: publicUrl
         });
       });
 
       blobStream.end(file.buffer);
 
     } catch (error) {
-      console.error('Error in prediction:', error);
-      res.status(500).json({ message: 'Error processing prediction' });
+      console.error('Error in upload:', error);
+      res.status(500).json({ message: 'Error processing upload' });
     }
   }
 
-  static async getUserPredictions(req, res) {
+  static async getUserImages(req, res) {
     try {
       const { userId } = req.params;
-      const predictions = await PredictionModel.getByUserId(userId);
-      res.json(predictions);
+      const images = await ImageModel.getByUserId(userId);
+      
+      res.json(images);
     } catch (error) {
-      console.error('Error getting predictions:', error);
-      res.status(500).json({ message: 'Error retrieving predictions' });
+      console.error('Error getting images:', error);
+      res.status(500).json({ message: 'Error retrieving images' });
     }
   }
 }

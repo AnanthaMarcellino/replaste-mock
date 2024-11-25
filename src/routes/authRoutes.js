@@ -2,18 +2,17 @@ const express = require('express');
 const router = express.Router();
 const { AuthController, ImageController } = require('../controllers/authController');
 
-// Auth routes
 router.post('/register', AuthController.register);
 router.post('/login', AuthController.login);
 router.post('/request-reset', AuthController.requestReset);
 router.get('/validate-token/:token', AuthController.validateResetToken);
 router.post('/reset/:token', AuthController.resetPassword);
 
-// Prediction routes
-router.post('/predict', 
+router.post('/upload',
   ImageController.uploadMiddleware,
-  ImageController.savePrediction
+  ImageController.uploadImage
 );
-router.get('/predictions/:userId', ImageController.getUserPredictions);
+
+router.get('/my-images/:userId', ImageController.getUserImages);
 
 module.exports = router;
